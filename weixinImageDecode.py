@@ -56,7 +56,7 @@ class WeixinImageDecode(object):
         # 读取.bat
         dat_read = open(f, "rb")
         # 图片输出路径
-        out = self.out_path + fn + ".jpg"
+        out = os.path.join(self.out_path, fn + ".jpg")
         # 图片写入
         png_write = open(out, "wb")
         # 循环字节
@@ -85,26 +85,67 @@ class WeixinImageDecode(object):
             # 判断目录还是.bat
             if not os.path.isdir(temp_path):
                 print('文件路径：{}'.format(temp_path))
-                print(fn)
+                #print(fn)
                 # 转码函数
-                weixinImageDecode.imageDecode(temp_path, fn, xor)
+                self.imageDecode(temp_path, fn, xor)
             else:
                 pass
 
-    def mian(self):
-        dat_decimal = weixinImageDecode.get_dat_decimal()
-        xor = weixinImageDecode.xor_Calculate(dat_decimal)
-        weixinImageDecode.findFile(into_path, xor)
-
+    def main(self):
+        dat_decimal = self.get_dat_decimal()
+        xor = self.xor_Calculate(dat_decimal)
+        self.findFile(self.into_path, xor)
 
 
 if __name__ == '__main__':
     # 录入需要转换的微信路径
-    into_path = 'D:\Project0611\weixin_image\weixin1212800'
+    #into_path = 'D:\Project0611\weixin_image\weixin1212800'
     # 录入需要保存后图片的路径
-    out_path = 'D:\Project0611\weixin_image\weixin1212800\\'
-    weixinImageDecode = WeixinImageDecode(into_path, out_path)
+    #out_path = 'D:\Project0611\weixin_image\weixin1212800\\'
+    # weixinImageDecode = WeixinImageDecode(into_path, out_path)
     # dat_decimal = weixinImageDecode.get_dat_decimal()
     # xor = weixinImageDecode.xor_Calculate(dat_decimal)
     # weixinImageDecode.findFile(into_path,xor)
-    weixinImageDecode.mian()
+    # weixinImageDecode.main()
+
+    # -----------------------------------------------------------------
+    # 2023.2.15 更新
+    # 针对 2022.7 后的 3.9.0 版本wx
+    #   图片放在 MsgAttach 下，各个聊天对象有独立的文件夹，在其下的 Image 文件夹内，再按月份分文件夹存储
+
+    # 需要转换的微信文件夹，最后一级必须为 FileStorage 下的 MsgAttach 文件夹
+    path1 = 'D:\Documents\WeChat Files\wxid_xxx\FileStorage\MsgAttach'
+
+    # 转换后的存储位置，将按照 path2\各个聊天对象\各个月份 的路径导出jpg图片
+    # （若路径不存在，则会自动创建）
+    path2 = 'E:\导出目录'
+
+    # 枚举全部月份的文件夹，逐个处理并导出
+    def process_image_folder(in_path, out_path):
+        fs = os.listdir(in_path)
+        for fn in fs:
+            temp_path = os.path.join(in_path, fn) # 月份文件夹
+            if os.path.isdir(temp_path):
+                fs2 = os.listdir(temp_path)
+                if len(fs2) == 0:  # 如果该月份文件夹下没有图片，则退出
+                    return 
+                out_path2 = os.path.join(out_path, fn)
+                if os.path.exists(out_path2):  # 如果导出目录中该月份的对应文件夹已存在，则退出
+                    return
+                os.makedirs(out_path2, exist_ok=True)
+                # 处理该月份文件夹下的全部图片，并保存到指定位置的同名文件夹下
+                weixinImageDecode = WeixinImageDecode(temp_path, out_path2)
+                weixinImageDecode.main()
+    
+    # 枚举全部聊天对象的文件夹，再处理 Image 文件夹下的各个月份
+    def process_object_folder(in_path, out_path):
+        fs = os.listdir(in_path)
+        for fn in fs:
+            temp_path = os.path.join(in_path, fn, "Image")
+            if os.path.isdir(temp_path):
+                out_path2 = os.path.join(out_path, fn)
+                os.makedirs(out_path2, exist_ok=True)
+                process_image_folder(temp_path, out_path2)
+
+    # 开始处理
+    process_object_folder(path1, path2)
